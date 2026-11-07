@@ -1,0 +1,320 @@
+]
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Prescription Reader</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #e6bd42;
+            color: #343a40;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            border-radius: 14px;
+            padding: 30px;
+            max-width: 700px;
+            width: 100%;
+            height: fit-content;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+        }
+
+        h2 {
+            color: #1769aa;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #555;
+        }
+
+        button {
+            background: #218838;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 7px;
+            cursor: pointer;
+            margin: 10px 0;
+            font-size: 15px;
+        }
+
+        button:hover {
+            background: #176b2c;
+        }
+
+        #imageUpload {
+            display: block;
+            margin: 20px auto;
+            padding: 10px;
+            max-width: 100%;
+        }
+
+        #preview {
+            display: none;
+            max-width: 100%;
+            max-height: 300px;
+            margin: 20px auto;
+            border: 2px solid #1769aa;
+            border-radius: 8px;
+        }
+
+        .section {
+            margin-top: 22px;
+            padding: 18px;
+            background: #f5f7fa;
+            border-radius: 9px;
+            text-align: left;
+        }
+
+        .section h3 {
+            color: #1769aa;
+            margin-top: 0;
+        }
+
+        .med-card {
+            background: white;
+            border: 1px solid #dce2e8;
+            border-radius: 9px;
+            padding: 15px;
+            margin: 12px 0;
+        }
+
+        .reminder {
+            background: #fff6dc;
+            border-left: 5px solid #e6bd42;
+            padding: 15px;
+            border-radius: 7px;
+            margin-top: 12px;
+        }
+
+        .status {
+            color: #a05a00;
+            font-weight: bold;
+        }
+
+        .success {
+            color: #218838;
+            font-weight: bold;
+        }
+
+        .error {
+            color: #c62828;
+            font-weight: bold;
+        }
+
+        .muted {
+            color: #666;
+            font-size: 13px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>Smart Prescription Reader</h2>
+
+    <p class="subtitle">
+        Upload a prescription to extract medication details
+        and generate a reminder preview.
+    </p>
+
+    <input type="file" id="imageUpload" accept="image/*">
+
+    <img id="preview" alt="Prescription preview">
+
+    <div id="output" class="section">
+        <strong>Ready to process your prescription.</strong>
+    </div>
+
+    <div id="results" class="section hidden"></div>
+
+</div>
+
+<script>
+
+const imageUpload = document.getElementById("imageUpload");
+const preview = document.getElementById("preview");
+const output = document.getElementById("output");
+const results = document.getElementById("results");
+
+// Change to the production URL when using the published workflow.
+const WEBHOOK_URL =
+    "http://localhost:5678/webhook-test/prescription-ocr";
+
+// Safely display text received from OCR or n8n.
+function addText(parent, tag, text, className = "") {
+    const element = document.createElement(tag);
+    element.textContent = text ?? "";
+    if (className) element.className = className;
+    parent.appendChild(element);
+    return element;
+}
+
+function displayResults(data) {
+
+    results.replaceChildren();
+    results.classList.remove("hidden");
+
+    addText(results, "h3", "Prescription Analysis Completed");
+
+    if (!data || !Array.isArray(data.medications)) {
+        throw new Error("The n8n response does not contain medication data.");
+    }
+
+    data.medications.forEach((med, index) => {
+
+        const card = document.createElement("div");
+        card.className = "med-card";
+
+        addText(card, "h3",
+            `${index + 1}. ${med.medication_name}`);
+
+        addText(card, "p", `Dosage: ${med.dosage}`);
+        addText(card, "p", `Frequency: ${med.frequency}`);
+        addText(card, "p", `Timing: ${med.timing}`);
+        addText(card, "p",
+            `Food instruction: ${med.before_or_after_food}`);
+        addText(card, "p", `Duration: ${med.duration}`);
+
+        results.appendChild(card);
+    });
+
+    addText(results, "h3", "Medication Reminder Preview");
+
+    const reminders = data.reminder_preview || [];
+
+    reminders.forEach(reminder => {
+
+        const box = document.createElement("div");
+        box.className = "reminder";
+
+        addText(box, "h4", reminder.medication);
+        addText(box, "p", `Dosage: ${reminder.dosage}`);
+        addText(box, "p", `Frequency: ${reminder.frequency}`);
+        addText(box, "p",
+            `Reminder timing: ${reminder.reminder_time}`);
+        addText(box, "p",
+            `Food instruction: ${reminder.food_instruction}`);
+
+        addText(box, "p", reminder.message, "success");
+
+        results.appendChild(box);
+    });
+
+    if (data.verified === false || data.requires_confirmation) {
+        addText(
+            results,
+            "p",
+            "Pending human verification. This is a preview, not an active reminder.",
+            "status"
+        );
+    }
+
+}
+
+// Process uploaded prescription.
+imageUpload.addEventListener("change", async (event) => {
+
+    const file = event.target.files[0];
+
+    if (!file) return;
+
+    results.replaceChildren();
+    results.classList.add("hidden");
+
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = "block";
+
+    output.textContent = "Reading prescription using OCR...";
+
+    try {
+
+        // Step 1: OCR
+        const { data: { text } } = await Tesseract.recognize(
+            file,
+            "eng",
+            {
+                logger: info => console.log(info)
+            }
+        );
+
+        if (!text.trim()) {
+            throw new Error("No readable text found in the image.");
+        }
+
+        output.replaceChildren();
+
+        addText(output, "h3", "Recognized Prescription Text");
+        addText(output, "pre", text);
+
+        addText(output, "p", "Sending prescription to n8n...");
+
+        // Step 2: Send OCR text to n8n
+        const response = await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                prescriptionText: text
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(
+                `n8n returned HTTP ${response.status}.`
+            );
+        }
+
+        // Step 3: Receive n8n response
+        const data = await response.json();
+
+        // Step 4: Display medication and reminder preview
+        displayResults(data);
+
+        addText(
+            output,
+            "p",
+            "Prescription successfully processed by n8n.",
+            "success"
+        );
+
+    } catch (error) {
+
+        output.replaceChildren();
+
+        addText(output, "p", "Processing failed: " + error.message, "error");
+
+        console.error("Prescription processing error:", error);
+    }
+
+});
+
+</script>
+
+</body>
+</html>
