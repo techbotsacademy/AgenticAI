@@ -5,14 +5,14 @@ import time
 import threading
 import uuid
 from datetime import datetime, timedelta
-
+import json
 import requests
 import pyttsx3
 import speech_recognition as sr
 from flask import Flask, request, jsonify
-
+from flask_cors import CORS
 app = Flask(__name__)
-
+CORS(app)
 # --------------------------------------------------
 # CONFIGURATION
 # --------------------------------------------------
@@ -25,9 +25,10 @@ REPEAT_INTERVAL_MINUTES = REPEAT_INTERVAL_SECONDS / 60
 MAX_REMINDER_ATTEMPTS = 3
 
 # Send an urgent event after 3 consecutive missed cycles.
-URGENT_AFTER_MISSED_CYCLES = 3
+URGENT_AFTER_MISSED_CYCLES = 1
 
-def get_reminder_message():
+def get_reminder_message(schedule):
+
     hour = datetime.now().hour
 
     if hour < 12:
@@ -44,20 +45,128 @@ def get_reminder_message():
         "anytime": "There are no specific meal instructions configured."
     }
 
+    meal_timing = schedule.get(
+        "before_or_after_food",
+        "Not specified"
+    )
+
     meal_message = meal_instructions.get(
-        MEAL_TIMING,
+        meal_timing,
         "Please follow your doctor's meal instructions."
     )
 
     return (
         f"{greeting}, {USER_NAME}! "
-        f"It's time to take your {MEDICATION_NAME}. "
+        f"It's time to take your "
+        f"{schedule['medication_name']}, "
+        f"{schedule['dosage']}. "
         f"{meal_message} "
         "Please let me know once you have taken it."
     )
+# --------------------------------------------------
+# MEDICATION SCHEDULE PERSISTENCE
+# --------------------------------------------------
+SCHEDULE_FILE = "medication_schedules.json"
+medication_schedules = []
+schedule_lock = threading.RLock()
 
-HISTORY_FILE = "medication_history.csv"
+def load_medication_schedules():
+    global medication_schedules
+    if not os.path.exists(SCHEDULE_FILE):
+        medication_schedules = []
+        return
 
+    try:
+        with open(SCHEDULE_FILE, "r", encoding="utf-8") as file:
+            medication_schedules = json.load(file)
+
+        if not isinstance(medication_schedules, list):
+            raise ValueError("Schedule file must contain a JSON list.")
+
+        print(
+            f"Loaded {len(medication_schedules)} medication schedules."
+        )
+
+    except (OSError, json.JSONDecodeError, ValueError) as error:
+        print(f"Could not load medication schedules: {error}")
+        medication_schedules = []
+
+
+def save_medication_schedules():
+    temporary_file = SCHEDULE_FILE + ".tmp"
+
+    with schedule_lock:
+        with open(
+            temporary_file,
+            "w",
+            encoding="utf-8"
+        ) as file:
+            json.dump(
+                medication_schedules,
+                file,
+                indent=4
+            )
+
+        os.replace(temporary_file, SCHEDULE_FILE)
+
+
+        # --------------------------------------------------
+# MEDICATION SCHEDULE VALIDATION
+# --------------------------------------------------
+
+def validate_medication_schedule(data):
+
+    required_fields = [
+        "medication_name",
+        "dosage",
+        "frequency",
+        "reminder_times",
+        "start_date",
+        "end_date",
+        "confirmed"
+    ]
+
+    for field in required_fields:
+        if field not in data:
+            return False, f"Missing required field: {field}"
+
+    for field in ["medication_name", "dosage", "frequency"]:
+        if not isinstance(data[field], str) or not data[field].strip():
+            return False, f"Invalid or empty field: {field}"
+
+    times = data["reminder_times"]
+
+    if not isinstance(times, list) or not times:
+        return False, "At least one exact reminder time is required."
+
+    for reminder_time in times:
+        if not isinstance(reminder_time, str):
+            return False, "Reminder times must be strings."
+
+        try:
+            datetime.strptime(reminder_time, "%H:%M")
+        except ValueError:
+            return False, f"Invalid reminder time: {reminder_time}. Use HH:MM."
+
+    try:
+        start_date = datetime.strptime(
+            data["start_date"], "%Y-%m-%d"
+        ).date()
+
+        end_date = datetime.strptime(
+            data["end_date"], "%Y-%m-%d"
+        ).date()
+
+        if end_date < start_date:
+            return False, "End date cannot be before start date."
+
+    except (ValueError, TypeError):
+        return False, "Dates must use YYYY-MM-DD format."
+
+    if data["confirmed"] is not True:
+        return False, "User confirmation is required."
+
+    return True, "Schedule validation successful."
 # --------------------------------------------------
 # N8N CONFIGURATION
 # --------------------------------------------------
@@ -82,13 +191,19 @@ CAREGIVER_CHAT_ID = "6241692378"
 # MEDICATION COURSE VALIDATION
 # --------------------------------------------------
 
-def is_medication_course_active():
+def is_medication_course_active(schedule):
     today = datetime.now().date()
 
-    return (
-        MEDICATION_START_DATE <= today
-        and today <= MEDICATION_END_DATE
-    )
+    start_date = datetime.strptime(
+        schedule["start_date"], "%Y-%m-%d"
+    ).date()
+
+    end_date = datetime.strptime(
+        schedule["end_date"], "%Y-%m-%d"
+    ).date()
+
+    return start_date <= today <= end_date
+
 # --------------------------------------------------
 # GLOBAL VARIABLES
 # --------------------------------------------------
@@ -103,7 +218,7 @@ reminder_lock = threading.Lock()
 # N8N NOTIFICATION
 # --------------------------------------------------
 
-def send_n8n_notification(slot, alert_type, missed_count):
+def send_n8n_notification(slot, alert_type, missed_count, schedule=None):
     """
     Send a missed-reminder event to n8n.
 
@@ -113,7 +228,14 @@ def send_n8n_notification(slot, alert_type, missed_count):
 
     payload = {
         "user_id": USER_ID,
-        "medication": MEDICATION_NAME,
+        "medication": (
+                schedule["medication_name"]
+                if schedule else MEDICATION_NAME
+            ),
+            "dosage": (
+                schedule["dosage"]
+                if schedule else "Not specified"
+            ),
         "slot": slot,
         "status": "missed",
         "alert_type": alert_type,
@@ -255,7 +377,7 @@ def is_confirmed(response):
 # --------------------------------------------------
 # HISTORY
 # --------------------------------------------------
-
+HISTORY_FILE = "reminder_history.csv"
 def log_reminder(slot, status, response=""):
 
     file_exists = os.path.exists(HISTORY_FILE)
@@ -296,8 +418,7 @@ def log_reminder(slot, status, response=""):
 # REMINDER LOOP
 # --------------------------------------------------
 
-def reminder_loop(slot, session_id):
-
+def reminder_loop(slot, session_id, schedule):
     """
     Reminder workflow:
 
@@ -317,7 +438,7 @@ def reminder_loop(slot, session_id):
         while True:
 
             # Stop reminders when the medication course is completed.
-            if not is_medication_course_active():
+            if not is_medication_course_active(schedule):
 
                 speak(
                     f"{USER_NAME}, your prescribed medication course "
@@ -346,7 +467,7 @@ def reminder_loop(slot, session_id):
                     f"{MAX_REMINDER_ATTEMPTS} for {slot}"
                 )
 
-                speak(get_reminder_message())
+                speak(get_reminder_message(schedule))
 
                 response = listen_for_response()
 
@@ -354,8 +475,7 @@ def reminder_loop(slot, session_id):
 
                     speak(
                         f"Well done, {USER_NAME}! "
-                        f"Your {MEDICATION_NAME} has been marked as taken. "
-                        "Take care!"
+                        f"Your {schedule['medication_name']} ({schedule['dosage']}) has been marked as taken. "
                     )
 
                     log_reminder(
@@ -378,7 +498,7 @@ def reminder_loop(slot, session_id):
 
                     speak(
                         f"{USER_NAME}, I didn't quite understand. "
-                        f"Please confirm once you have taken your {MEDICATION_NAME}."
+                        f"Please confirm once you have taken your {schedule['medication_name']}."
                     )
 
                     log_reminder(
@@ -430,15 +550,17 @@ def reminder_loop(slot, session_id):
             )
             speak(
                 f"{USER_NAME}, I haven't received your confirmation "
-                f"for your {MEDICATION_NAME} yet. "
+                f"for your {schedule['medication_name']} yet. "
                 "Please let me know once you have taken it."
             )
 
             # Send one normal missed event to n8n.
+            
             send_n8n_notification(
                 slot=slot,
                 alert_type="MISSED",
-                missed_count=missed_count
+                missed_count=missed_count,
+                schedule=schedule
             )
 
             log_reminder(
@@ -447,35 +569,45 @@ def reminder_loop(slot, session_id):
                 str(missed_count)
             )
 
-            # After 3 consecutive missed cycles,
-            # send an additional urgent event to n8n.
+            # After 3 unanswered voice attempts, send one urgent alert and stop.
             if (
                 missed_cycles_this_session
                 >= URGENT_AFTER_MISSED_CYCLES
             ):
 
                 print(
-                    "Three consecutive reminder cycles missed. "
+                    "Three voice reminder attempts missed. "
                     "Sending URGENT event to n8n."
+                )
+
+                speak(
+                    f"{USER_NAME}, I haven't received your confirmation "
+                    f"for your {schedule['medication_name']}. "
+                    "I will share this with your father so he can check on you."
                 )
 
                 urgent_sent = send_n8n_notification(
                     slot=slot,
                     alert_type="URGENT",
-                    missed_count=missed_count
+                    missed_count=missed_count,
+                    schedule=schedule
                 )
 
                 if urgent_sent:
-
                     log_reminder(
                         slot,
                         "URGENT_EVENT_SENT_TO_N8N",
                         str(missed_count)
                     )
+                    print("Urgent notification sent successfully.")
+                else:
+                    print("Urgent notification could not be sent.")
 
-                # Allow another urgent event after
-                # another 3 missed cycles.
-                missed_cycles_this_session = 0
+                # Stop this reminder session.
+                return
+
+
+           
 
     except Exception as error:
 
@@ -495,6 +627,128 @@ def reminder_loop(slot, session_id):
                 del active_reminders[slot]
 
         print(f"Reminder stopped for slot: {slot}")
+
+# --------------------------------------------------
+# AUTOMATIC MEDICATION SCHEDULER
+# --------------------------------------------------
+
+SCHEDULER_CHECK_INTERVAL = 5
+
+scheduled_reminder_runs = set()
+
+
+def medication_scheduler():
+
+    print("Automatic medication scheduler started.")
+
+    while True:
+
+        try:
+            now = datetime.now()
+            current_time = now.strftime("%H:%M")
+            today = now.date().isoformat()
+
+            with schedule_lock:
+                schedules = list(medication_schedules)
+
+            for schedule in schedules:
+
+                if not schedule.get("confirmed"):
+                    continue
+
+                if not schedule.get("active"):
+                    continue
+
+                if not is_medication_course_active(schedule):
+                    continue
+
+                if current_time not in schedule.get("reminder_times", []):
+                    continue
+
+                schedule_id = schedule.get("schedule_id")
+
+                run_id = f"{schedule_id}_{today}_{current_time}"
+
+                if run_id in scheduled_reminder_runs:
+                    continue
+
+                slot = f"medication_{schedule_id}"
+
+                with reminder_lock:
+
+                    if slot in active_reminders:
+                        continue
+
+                    session_id = str(uuid.uuid4())
+                    active_reminders[slot] = session_id
+
+                scheduled_reminder_runs.add(run_id)
+
+                print(
+                    f"Starting automatic reminder: "
+                    f"{schedule.get('medication_name')}"
+                )
+
+                threading.Thread(
+                    target=reminder_loop,
+                    args=(slot, session_id, schedule),
+                    daemon=True
+                ).start()
+
+        except Exception as error:
+
+            print(f"Scheduler error: {error}")
+
+        time.sleep(SCHEDULER_CHECK_INTERVAL)
+# --------------------------------------------------
+# RECEIVE CONFIRMED MEDICATION SCHEDULES
+# --------------------------------------------------
+
+@app.route("/api/medications", methods=["POST"])
+def receive_medication_schedule():
+
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({
+            "status": "error",
+            "message": "A valid JSON object is required."
+        }), 400
+
+    valid, message = validate_medication_schedule(data)
+
+    if not valid:
+        return jsonify({
+            "status": "error",
+            "message": message
+        }), 400
+
+    schedule = {
+        "schedule_id": str(uuid.uuid4()),
+        "medication_name": data["medication_name"].strip(),
+        "dosage": data["dosage"].strip(),
+        "frequency": data["frequency"].strip(),
+        "reminder_times": data["reminder_times"],
+        "before_or_after_food": data.get(
+            "before_or_after_food", "Not specified"
+        ),
+        "start_date": data["start_date"],
+        "end_date": data["end_date"],
+        "confirmed": True,
+        "active": True,
+        "created_at": datetime.now().isoformat()
+    }
+
+    with schedule_lock:
+        medication_schedules.append(schedule)
+        save_medication_schedules()
+
+    return jsonify(
+        {
+        "status": "saved",
+        "message": "Medication schedule saved and activated successfully.",
+        "schedule": schedule
+    }), 201
 
 
 # --------------------------------------------------
@@ -569,13 +823,33 @@ def remind():
 
         active_reminders[slot] = session_id
 
-    reminder_thread = threading.Thread(
-        target=reminder_loop,
-        args=(slot, session_id),
-        daemon=True
-    )
+        with schedule_lock:
+            schedule = next(
+                (
+                    item for item in medication_schedules
+                    if item.get("active") is True
+                    and item.get("confirmed") is True
+                ),
+                None
+            )
 
-    reminder_thread.start()
+        if schedule is None:
+            with reminder_lock:
+                active_reminders.pop(slot, None)
+
+            return jsonify({
+                "status": "error",
+                "message": "No active confirmed medication schedule found."
+            }), 400
+
+        reminder_thread = threading.Thread(
+            target=reminder_loop,
+            args=(slot, session_id, schedule),
+            daemon=True
+        )
+
+        reminder_thread.start()
+
 
     return jsonify({
 
@@ -646,6 +920,14 @@ def home():
 
 if __name__ == "__main__":
 
+    load_medication_schedules()
+    scheduler_thread = threading.Thread(
+    target=medication_scheduler,
+    daemon=True,
+    name="MedicationScheduler"
+)
+
+    scheduler_thread.start()
     print(
         "Starting Voice Medication Reminder Agent..."
     )

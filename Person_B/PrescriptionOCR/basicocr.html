@@ -151,6 +151,7 @@
     </div>
 
     <div id="results" class="section hidden"></div>
+    <div id="confirmation"></div>
 
 </div>
 
@@ -163,7 +164,7 @@ const results = document.getElementById("results");
 
 // Change to the production URL when using the published workflow.
 const WEBHOOK_URL =
-    "http://localhost:5678/webhook-test/prescription-ocr";
+    "http://localhost:5678/webhook/prescription-ocr";
 
 // Safely display text received from OCR or n8n.
 function addText(parent, tag, text, className = "") {
@@ -225,7 +226,7 @@ function displayResults(data) {
         results.appendChild(box);
     });
 
-    if (data.verified === false || data.requires_confirmation) {
+        if (data.verified === false || data.requires_confirmation) {
         addText(
             results,
             "p",
@@ -234,6 +235,144 @@ function displayResults(data) {
         );
     }
 
+    // Save extracted medication data for the confirmation stage.
+    showConfirmationForm(data.medications);
+}
+
+function showConfirmationForm(medications) {
+
+    const confirmation = document.getElementById("confirmation");
+    confirmation.replaceChildren();
+
+    if (!medications.length) {
+        addText(confirmation, "p", "No medications found to confirm.", "error");
+        return;
+    }
+
+    addText(confirmation, "h3", "Review and Confirm Medication Schedule");
+
+    const form = document.createElement("form");
+    form.id = "scheduleForm";
+
+    medications.forEach((med, index) => {
+
+        const section = document.createElement("div");
+        section.className = "med-card";
+
+        addText(section, "h4", `Medication ${index + 1}: ${med.medication_name}`);
+        addText(section, "p", `Dosage: ${med.dosage}`);
+        addText(section, "p", `Frequency: ${med.frequency}`);
+        addText(section, "p", `Extracted timing: ${med.timing}`);
+        addText(section, "p", `Food instruction: ${med.before_or_after_food}`);
+        addText(section, "p", `Duration: ${med.duration}`);
+
+        const timeLabel = addText(section, "label", "Exact reminder time(s):");
+        const times = document.createElement("input");
+        times.type = "text";
+        times.placeholder = "Example: 09:00, 14:00, 21:00";
+        times.required = true;
+        times.dataset.index = index;
+        times.className = "reminder-times";
+        timeLabel.appendChild(times);
+
+        const startLabel = addText(section, "label", "Start date:");
+        const startDate = document.createElement("input");
+        startDate.type = "date";
+        startDate.required = true;
+        startDate.className = "start-date";
+        startLabel.appendChild(startDate);
+
+        const endLabel = addText(section, "label", "End date:");
+        const endDate = document.createElement("input");
+        endDate.type = "date";
+        endDate.required = true;
+        endDate.className = "end-date";
+        endLabel.appendChild(endDate);
+
+        form.appendChild(section);
+    });
+
+    const submit = document.createElement("button");
+    submit.type = "submit";
+    submit.textContent = "Confirm and Save Schedule";
+    form.appendChild(submit);
+
+    confirmation.appendChild(form);
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        // The API currently saves schedules but does not activate reminders.
+        submit.disabled = true;
+        submit.textContent = "Saving...";
+
+        try {
+            for (let index = 0; index < medications.length; index++) {
+
+                const med = medications[index];
+                const section = form.children[index];
+
+                const reminderTimes = section.querySelector(".reminder-times")
+                    .value.split(",")
+                    .map(time => time.trim());
+
+                const startDate = section.querySelector(".start-date").value;
+                const endDate = section.querySelector(".end-date").value;
+
+                if (reminderTimes.some(time => !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))) {
+                    throw new Error(`Invalid reminder time for ${med.medication_name}. Use HH:MM format.`);
+                }
+
+                if (new Set(reminderTimes).size !== reminderTimes.length) {
+                    throw new Error(`Duplicate reminder times for ${med.medication_name}.`);
+                }
+
+                if (endDate < startDate) {
+                    throw new Error(`End date cannot be before start date for ${med.medication_name}.`);
+                }
+
+                const schedule = {
+                    medication_name: med.medication_name,
+                    dosage: med.dosage,
+                    frequency: med.frequency,
+                    reminder_times: reminderTimes,
+                    before_or_after_food: med.before_or_after_food,
+                    start_date: startDate,
+                    end_date: endDate,
+                    confirmed: true
+                };
+
+                const response = await fetch("http://127.0.0.1:5000/api/medications", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(schedule)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || `Person A returned HTTP ${response.status}.`);
+                }
+            }
+
+            confirmation.replaceChildren();
+            addText(
+                confirmation,
+                "p",
+                "All confirmed medication schedules have been saved and activated. Automatic reminders are scheduled."
+                
+            );
+
+        } catch (error) {
+            addText(confirmation, "p", "Could not save schedules: " + error.message, "error");
+            console.error("Schedule saving error:", error);
+        } finally {
+            submit.disabled = false;
+            submit.textContent = "Confirm and Save Schedule";
+        }
+    });
 }
 
 // Process uploaded prescription.

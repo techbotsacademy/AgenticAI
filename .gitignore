@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+.venv/
+
+# Local environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Personal medication data and logs
+medication_schedules*.json
+reminder_history.csv
+
+# Secrets
+.env
+.env.*
+
+# Backup files
+*.backup
+*.backup.*
