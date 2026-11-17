@@ -1,0 +1,6 @@
+Flask
+Flask-Cors
+requests
+pyttsx3
+SpeechRecognition
+PyAudio

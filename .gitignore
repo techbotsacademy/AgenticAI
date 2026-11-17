@@ -22,3 +22,5 @@ reminder_history.csv
 # Backup files
 *.backup
 *.backup.*
+
+medication_history.csv

@@ -1,134 +1,156 @@
-]
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Prescription Reader</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Prescription Reader</title>
 
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
-    <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background: #e6bd42;
-            color: #343a40;
-            margin: 0;
-            padding: 40px 20px;
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
-        }
+<style>
+* {
+    box-sizing: border-box;
+}
 
-        .container {
-            background: white;
-            border-radius: 14px;
-            padding: 30px;
-            max-width: 700px;
-            width: 100%;
-            height: fit-content;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.12);
-        }
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #e6bd42;
+    color: #343a40;
+    margin: 0;
+    padding: 30px 15px;
+}
 
-        h2 {
-            color: #1769aa;
-            text-align: center;
-        }
+.container {
+    background: white;
+    border-radius: 14px;
+    padding: 25px;
+    max-width: 850px;
+    width: 100%;
+    margin: auto;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+}
 
-        .subtitle {
-            text-align: center;
-            color: #555;
-        }
+h2, h3 {
+    color: #1769aa;
+}
 
-        button {
-            background: #218838;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 7px;
-            cursor: pointer;
-            margin: 10px 0;
-            font-size: 15px;
-        }
+h2, .subtitle {
+    text-align: center;
+}
 
-        button:hover {
-            background: #176b2c;
-        }
+.subtitle {
+    color: #555;
+}
 
-        #imageUpload {
-            display: block;
-            margin: 20px auto;
-            padding: 10px;
-            max-width: 100%;
-        }
+.section {
+    margin-top: 22px;
+    padding: 18px;
+    background: #f5f7fa;
+    border-radius: 9px;
+}
 
-        #preview {
-            display: none;
-            max-width: 100%;
-            max-height: 300px;
-            margin: 20px auto;
-            border: 2px solid #1769aa;
-            border-radius: 8px;
-        }
+.med-card {
+    background: white;
+    border: 1px solid #dce2e8;
+    border-radius: 9px;
+    padding: 15px;
+    margin: 12px 0;
+}
 
-        .section {
-            margin-top: 22px;
-            padding: 18px;
-            background: #f5f7fa;
-            border-radius: 9px;
-            text-align: left;
-        }
+input, button {
+    font-size: 15px;
+    padding: 11px;
+    border-radius: 7px;
+}
 
-        .section h3 {
-            color: #1769aa;
-            margin-top: 0;
-        }
+input {
+    border: 1px solid #bbb;
+    width: 100%;
+    margin: 8px 0 14px;
+}
 
-        .med-card {
-            background: white;
-            border: 1px solid #dce2e8;
-            border-radius: 9px;
-            padding: 15px;
-            margin: 12px 0;
-        }
+button {
+    background: #218838;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin: 8px 0;
+}
 
-        .reminder {
-            background: #fff6dc;
-            border-left: 5px solid #e6bd42;
-            padding: 15px;
-            border-radius: 7px;
-            margin-top: 12px;
-        }
+button:hover {
+    background: #176b2c;
+}
 
-        .status {
-            color: #a05a00;
-            font-weight: bold;
-        }
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
 
-        .success {
-            color: #218838;
-            font-weight: bold;
-        }
+#imageUpload {
+    display: block;
+    margin: 20px auto;
+}
 
-        .error {
-            color: #c62828;
-            font-weight: bold;
-        }
+#preview {
+    display: none;
+    max-width: 100%;
+    max-height: 300px;
+    margin: 20px auto;
+    border: 2px solid #1769aa;
+    border-radius: 8px;
+}
 
-        .muted {
-            color: #666;
-            font-size: 13px;
-        }
+.success {
+    color: #218838;
+    font-weight: bold;
+}
 
-        .hidden {
-            display: none;
-        }
+.error {
+    color: #c62828;
+    font-weight: bold;
+}
 
-        pre {
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
-        }
-    </style>
+.status {
+    color: #a05a00;
+    font-weight: bold;
+}
+
+.hidden {
+    display: none;
+}
+
+pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.verification-box {
+    background: #fff6dc;
+    border: 1px solid #e6bd42;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 18px 0;
+}
+
+.verification-box label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-weight: bold;
+}
+
+.verification-box input {
+    width: auto;
+    margin: 3px 0 0;
+}
+
+@media(max-width:600px) {
+    .container {
+        padding: 15px;
+    }
+}
+</style>
 </head>
 
 <body>
@@ -138,8 +160,8 @@
     <h2>Smart Prescription Reader</h2>
 
     <p class="subtitle">
-        Upload a prescription to extract medication details
-        and generate a reminder preview.
+        Upload your prescription to automatically extract
+        medication details and generate reminders.
     </p>
 
     <input type="file" id="imageUpload" accept="image/*">
@@ -147,235 +169,648 @@
     <img id="preview" alt="Prescription preview">
 
     <div id="output" class="section">
-        <strong>Ready to process your prescription.</strong>
+        Ready to process your prescription.
     </div>
 
     <div id="results" class="section hidden"></div>
+
     <div id="confirmation"></div>
 
 </div>
 
 <script>
 
+// ==================================================
+// CONFIGURATION
+// ==================================================
+
+const WEBHOOK_URL =
+    "http://localhost:5678/webhook/prescription-ocr";
+
+const FLASK_URL =
+    "http://127.0.0.1:5000";
+
 const imageUpload = document.getElementById("imageUpload");
 const preview = document.getElementById("preview");
 const output = document.getElementById("output");
 const results = document.getElementById("results");
+const confirmation = document.getElementById("confirmation");
 
-// Change to the production URL when using the published workflow.
-const WEBHOOK_URL =
-    "http://localhost:5678/webhook/prescription-ocr";
+let recognizedPrescriptionText = "";
+let extractedMedications = [];
+let extractedPrescriptionDate = "";
 
-// Safely display text received from OCR or n8n.
+// ==================================================
+// DISPLAY HELPER
+// ==================================================
+
 function addText(parent, tag, text, className = "") {
+
     const element = document.createElement(tag);
+
     element.textContent = text ?? "";
-    if (className) element.className = className;
+
+    if (className) {
+        element.className = className;
+    }
+
     parent.appendChild(element);
+
     return element;
 }
+
+// ==================================================
+// DATE CONVERSION
+// ==================================================
+
+function normalizeDate(value) {
+
+    if (!value) return "";
+
+    const text = String(value).trim();
+
+    let match = text.match(
+        /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/
+    );
+
+    if (match) {
+        return makeValidDate(
+            Number(match[1]),
+            Number(match[2]),
+            Number(match[3])
+        );
+    }
+
+    match = text.match(
+        /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/
+    );
+
+    if (match) {
+        return makeValidDate(
+            Number(match[3]),
+            Number(match[2]),
+            Number(match[1])
+        );
+    }
+
+    match = text.match(
+        /^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})$/
+    );
+
+    if (match) {
+
+        const months = {
+            jan: 1, january: 1,
+            feb: 2, february: 2,
+            mar: 3, march: 3,
+            apr: 4, april: 4,
+            may: 5,
+            jun: 6, june: 6,
+            jul: 7, july: 7,
+            aug: 8, august: 8,
+            sep: 9, sept: 9, september: 9,
+            oct: 10, october: 10,
+            nov: 11, november: 11,
+            dec: 12, december: 12
+        };
+
+        const month = months[match[2].toLowerCase()];
+
+        if (month) {
+            return makeValidDate(
+                Number(match[3]),
+                month,
+                Number(match[1])
+            );
+        }
+    }
+
+    return "";
+}
+
+function makeValidDate(year, month, day) {
+
+    const date = new Date(year, month - 1, day);
+
+    if (
+        date.getFullYear() !== year ||
+        date.getMonth() !== month - 1 ||
+        date.getDate() !== day
+    ) {
+        return "";
+    }
+
+    return [
+        year,
+        String(month).padStart(2, "0"),
+        String(day).padStart(2, "0")
+    ].join("-");
+}
+
+// ==================================================
+// FIND DATE IN OCR TEXT
+// ==================================================
+
+function findPrescriptionDate(text) {
+
+    const patterns = [
+        /\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b/,
+        /\b\d{1,2}[-/.]\d{1,2}[-/.]\d{4}\b/,
+        /\b\d{1,2}\s+[a-zA-Z]+\s+\d{4}\b/
+    ];
+
+    for (const pattern of patterns) {
+
+        const match = text.match(pattern);
+
+        if (match) {
+
+            const date = normalizeDate(match[0]);
+
+            if (date) return date;
+        }
+    }
+
+    return "";
+}
+
+// ==================================================
+// CALCULATE END DATE
+// ==================================================
+
+function calculateEndDate(startDate, duration) {
+
+    if (!startDate || !duration) return "";
+
+    const text = String(duration).toLowerCase().trim();
+
+    const match = text.match(
+        /(\d+)\s*(day|days|week|weeks|month|months)\b/
+    );
+
+    if (!match) return "";
+
+    const amount = Number(match[1]);
+    const unit = match[2];
+
+    if (!Number.isInteger(amount) || amount <= 0) {
+        return "";
+    }
+
+    const parts = startDate.split("-").map(Number);
+
+    const date = new Date(
+        parts[0],
+        parts[1] - 1,
+        parts[2]
+    );
+
+    if (unit.startsWith("day")) {
+        date.setDate(date.getDate() + amount - 1);
+    }
+
+    else if (unit.startsWith("week")) {
+        date.setDate(date.getDate() + amount * 7 - 1);
+    }
+
+    else if (unit.startsWith("month")) {
+
+        const targetDay = date.getDate();
+
+        date.setMonth(date.getMonth() + amount);
+
+        if (date.getDate() !== targetDay) {
+            date.setDate(0);
+        }
+
+        date.setDate(date.getDate() - 1);
+    }
+
+    return [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, "0"),
+        String(date.getDate()).padStart(2, "0")
+    ].join("-");
+}
+
+// ==================================================
+// MEAL INSTRUCTION NORMALIZATION
+// ==================================================
+
+function normalizeMealInstruction(value) {
+
+    if (!value) return "";
+
+    const text = String(value).toLowerCase().trim();
+
+    if (
+        text.includes("before") ||
+        text.includes("empty stomach")
+    ) {
+        return "before_meal";
+    }
+
+    if (text.includes("after")) {
+        return "after_meal";
+    }
+
+    return "";
+}
+
+// ==================================================
+// DISPLAY EXTRACTED MEDICATIONS
+// ==================================================
 
 function displayResults(data) {
 
     results.replaceChildren();
+
     results.classList.remove("hidden");
 
-    addText(results, "h3", "Prescription Analysis Completed");
+    addText(
+        results,
+        "h3",
+        "Prescription Analysis Completed"
+    );
 
     if (!data || !Array.isArray(data.medications)) {
-        throw new Error("The n8n response does not contain medication data.");
+
+        throw new Error(
+            "The n8n response does not contain medication data."
+        );
+    }
+
+    extractedMedications = data.medications;
+
+    extractedPrescriptionDate =
+        normalizeDate(data.prescription_date) ||
+        findPrescriptionDate(recognizedPrescriptionText);
+
+    if (extractedPrescriptionDate) {
+
+        addText(
+            results,
+            "p",
+            "Prescription date: " + extractedPrescriptionDate,
+            "success"
+        );
+
+    } else {
+
+        addText(
+            results,
+            "p",
+            "Prescription date could not be identified. Please verify it before saving.",
+            "error"
+        );
     }
 
     data.medications.forEach((med, index) => {
 
         const card = document.createElement("div");
+
         card.className = "med-card";
 
-        addText(card, "h3",
-            `${index + 1}. ${med.medication_name}`);
+        addText(
+            card,
+            "h3",
+            `${index + 1}. ${med.medication_name}`
+        );
 
-        addText(card, "p", `Dosage: ${med.dosage}`);
-        addText(card, "p", `Frequency: ${med.frequency}`);
-        addText(card, "p", `Timing: ${med.timing}`);
-        addText(card, "p",
-            `Food instruction: ${med.before_or_after_food}`);
-        addText(card, "p", `Duration: ${med.duration}`);
+        addText(card, "p", "Dosage: " + med.dosage);
+        addText(card, "p", "Frequency: " + med.frequency);
+        addText(card, "p", "Prescription timing: " + med.timing);
+
+        const meal = normalizeMealInstruction(
+            med.before_or_after_food || med.timing
+        );
+
+        addText(
+            card,
+            "p",
+            "Meal instruction: " +
+            (
+                meal === "before_meal"
+                    ? "Before Meal"
+                    : meal === "after_meal"
+                        ? "After Meal"
+                        : "Not specified in prescription"
+            )
+        );
+
+        addText(card, "p", "Duration: " + med.duration);
 
         results.appendChild(card);
     });
 
-    addText(results, "h3", "Medication Reminder Preview");
+    addText(
+        results,
+        "p",
+        "Review every extracted medicine and enter the reminder time for each medication.",
+        "status"
+    );
 
-    const reminders = data.reminder_preview || [];
-
-    reminders.forEach(reminder => {
-
-        const box = document.createElement("div");
-        box.className = "reminder";
-
-        addText(box, "h4", reminder.medication);
-        addText(box, "p", `Dosage: ${reminder.dosage}`);
-        addText(box, "p", `Frequency: ${reminder.frequency}`);
-        addText(box, "p",
-            `Reminder timing: ${reminder.reminder_time}`);
-        addText(box, "p",
-            `Food instruction: ${reminder.food_instruction}`);
-
-        addText(box, "p", reminder.message, "success");
-
-        results.appendChild(box);
-    });
-
-        if (data.verified === false || data.requires_confirmation) {
-        addText(
-            results,
-            "p",
-            "Pending human verification. This is a preview, not an active reminder.",
-            "status"
-        );
-    }
-
-    // Save extracted medication data for the confirmation stage.
     showConfirmationForm(data.medications);
 }
 
+// ==================================================
+// HUMAN VERIFICATION AND CONFIRMATION FORM
+// ==================================================
+
 function showConfirmationForm(medications) {
 
-    const confirmation = document.getElementById("confirmation");
     confirmation.replaceChildren();
 
     if (!medications.length) {
-        addText(confirmation, "p", "No medications found to confirm.", "error");
+
+        addText(
+            confirmation,
+            "p",
+            "No medications found.",
+            "error"
+        );
+
         return;
     }
 
-    addText(confirmation, "h3", "Review and Confirm Medication Schedule");
+    addText(
+        confirmation,
+        "h3",
+        "Verify and Confirm Medication Timings"
+    );
 
     const form = document.createElement("form");
-    form.id = "scheduleForm";
 
     medications.forEach((med, index) => {
 
         const section = document.createElement("div");
+
         section.className = "med-card";
 
-        addText(section, "h4", `Medication ${index + 1}: ${med.medication_name}`);
-        addText(section, "p", `Dosage: ${med.dosage}`);
-        addText(section, "p", `Frequency: ${med.frequency}`);
-        addText(section, "p", `Extracted timing: ${med.timing}`);
-        addText(section, "p", `Food instruction: ${med.before_or_after_food}`);
-        addText(section, "p", `Duration: ${med.duration}`);
+        addText(
+            section,
+            "h4",
+            med.medication_name
+        );
 
-        const timeLabel = addText(section, "label", "Exact reminder time(s):");
-        const times = document.createElement("input");
-        times.type = "text";
-        times.placeholder = "Example: 09:00, 14:00, 21:00";
-        times.required = true;
-        times.dataset.index = index;
-        times.className = "reminder-times";
-        timeLabel.appendChild(times);
+        const startDate = extractedPrescriptionDate;
 
-        const startLabel = addText(section, "label", "Start date:");
-        const startDate = document.createElement("input");
-        startDate.type = "date";
-        startDate.required = true;
-        startDate.className = "start-date";
-        startLabel.appendChild(startDate);
+        const endDate = calculateEndDate(
+            startDate,
+            med.duration
+        );
 
-        const endLabel = addText(section, "label", "End date:");
-        const endDate = document.createElement("input");
-        endDate.type = "date";
-        endDate.required = true;
-        endDate.className = "end-date";
-        endLabel.appendChild(endDate);
+        const mealInstruction = normalizeMealInstruction(
+            med.before_or_after_food || med.timing
+        );
+
+        addText(section, "p", "Dosage: " + med.dosage);
+
+        addText(section, "p", "Frequency: " + med.frequency);
+
+        addText(section, "p", "Prescription timing: " + med.timing);
+
+        addText(
+            section,
+            "p",
+            "Meal instruction: " +
+            (
+                mealInstruction === "before_meal"
+                    ? "Before Meal"
+                    : mealInstruction === "after_meal"
+                        ? "After Meal"
+                        : "Not specified in prescription"
+            )
+        );
+
+        addText(
+            section,
+            "p",
+            "Start date: " + (startDate || "Needs verification")
+        );
+
+        addText(
+            section,
+            "p",
+            "End date: " + (endDate || "Needs verification")
+        );
+
+        addText(
+            section,
+            "label",
+            "Enter reminder time(s):"
+        );
+
+        const timeInput = document.createElement("input");
+
+        timeInput.type = "text";
+
+        timeInput.placeholder =
+            "Example: 08:00 or 08:00, 14:00, 21:00";
+
+        timeInput.required = true;
+
+        timeInput.className = "reminder-times";
+
+        timeInput.dataset.index = index;
+
+        section.appendChild(timeInput);
+
+        section.dataset.startDate = startDate;
+        section.dataset.endDate = endDate;
+        section.dataset.mealInstruction =
+            mealInstruction || "not_specified";
 
         form.appendChild(section);
     });
 
+    // HUMAN VERIFICATION CHECKBOX
+
+    const verificationBox = document.createElement("div");
+
+    verificationBox.className = "verification-box";
+
+    const verificationLabel = document.createElement("label");
+
+    const verificationCheckbox = document.createElement("input");
+
+    verificationCheckbox.type = "checkbox";
+    verificationCheckbox.required = true;
+
+    const verificationText = document.createElement("span");
+
+    verificationText.textContent =
+        "I have reviewed and verified the extracted medication names, dosages, frequencies, timings, meal instructions and dates. I confirm these details are correct.";
+
+    verificationLabel.appendChild(verificationCheckbox);
+    verificationLabel.appendChild(verificationText);
+
+    verificationBox.appendChild(verificationLabel);
+
+    form.appendChild(verificationBox);
+
     const submit = document.createElement("button");
+
     submit.type = "submit";
-    submit.textContent = "Confirm and Save Schedule";
+
+    submit.textContent = "Verify and Save Schedule";
+
     form.appendChild(submit);
 
     confirmation.appendChild(form);
 
+    // ==================================================
+    // SAVE TO FLASK
+    // ==================================================
+
     form.addEventListener("submit", async (event) => {
+
         event.preventDefault();
 
-        // The API currently saves schedules but does not activate reminders.
+        if (!verificationCheckbox.checked) {
+
+            alert(
+                "Please verify the prescription details before saving."
+            );
+
+            return;
+        }
+
         submit.disabled = true;
+
         submit.textContent = "Saving...";
 
         try {
-            for (let index = 0; index < medications.length; index++) {
 
-                const med = medications[index];
+            // Validate all medicines before sending any requests.
+
+            const schedules = medications.map((med, index) => {
+
                 const section = form.children[index];
 
-                const reminderTimes = section.querySelector(".reminder-times")
-                    .value.split(",")
+                const reminderTimes = section
+                    .querySelector(".reminder-times")
+                    .value
+                    .split(",")
                     .map(time => time.trim());
 
-                const startDate = section.querySelector(".start-date").value;
-                const endDate = section.querySelector(".end-date").value;
+                const startDate = section.dataset.startDate;
 
-                if (reminderTimes.some(time => !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))) {
-                    throw new Error(`Invalid reminder time for ${med.medication_name}. Use HH:MM format.`);
+                const endDate = section.dataset.endDate;
+
+                const mealInstruction =
+                    section.dataset.mealInstruction;
+
+                if (!startDate || !endDate) {
+
+                    throw new Error(
+                        `Prescription date or duration is missing for ${med.medication_name}. Please verify the prescription.`
+                    );
                 }
 
-                if (new Set(reminderTimes).size !== reminderTimes.length) {
-                    throw new Error(`Duplicate reminder times for ${med.medication_name}.`);
+                if (
+                    reminderTimes.some(
+                        time => !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)
+                    )
+                ) {
+
+                    throw new Error(
+                        `Invalid reminder time for ${med.medication_name}. Use HH:MM format.`
+                    );
                 }
 
-                if (endDate < startDate) {
-                    throw new Error(`End date cannot be before start date for ${med.medication_name}.`);
+                if (
+                    new Set(reminderTimes).size !== reminderTimes.length
+                ) {
+
+                    throw new Error(
+                        `Duplicate reminder times for ${med.medication_name}.`
+                    );
                 }
 
-                const schedule = {
+                return {
+
                     medication_name: med.medication_name,
+
                     dosage: med.dosage,
+
                     frequency: med.frequency,
+
                     reminder_times: reminderTimes,
-                    before_or_after_food: med.before_or_after_food,
+
+                    before_or_after_food:
+                        mealInstruction || "not_specified",
+
                     start_date: startDate,
+
                     end_date: endDate,
+
                     confirmed: true
                 };
+            });
 
-                const response = await fetch("http://127.0.0.1:5000/api/medications", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(schedule)
-                });
+            // Send each validated medication to Flask.
+
+            for (const schedule of schedules) {
+
+                const response = await fetch(
+                    FLASK_URL + "/api/medications",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify(schedule)
+                    }
+                );
 
                 const result = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(result.error || `Person A returned HTTP ${response.status}.`);
+
+                    throw new Error(
+                        result.message ||
+                        result.error ||
+                        `Flask returned HTTP ${response.status}.`
+                    );
                 }
             }
 
             confirmation.replaceChildren();
+
             addText(
                 confirmation,
                 "p",
-                "All confirmed medication schedules have been saved and activated. Automatic reminders are scheduled."
-                
+                "Medication schedules successfully saved.",
+                "success"
             );
 
         } catch (error) {
-            addText(confirmation, "p", "Could not save schedules: " + error.message, "error");
-            console.error("Schedule saving error:", error);
+
+            addText(
+                confirmation,
+                "p",
+                "Could not save schedules: " + error.message,
+                "error"
+            );
+
+            console.error(error);
+
         } finally {
+
             submit.disabled = false;
-            submit.textContent = "Confirm and Save Schedule";
+
+            submit.textContent = "Verify and Save Schedule";
         }
     });
 }
 
-// Process uploaded prescription.
+// ==================================================
+// PRESCRIPTION IMAGE UPLOAD AND OCR
+// ==================================================
+
 imageUpload.addEventListener("change", async (event) => {
 
     const file = event.target.files[0];
@@ -383,17 +818,22 @@ imageUpload.addEventListener("change", async (event) => {
     if (!file) return;
 
     results.replaceChildren();
+
     results.classList.add("hidden");
 
+    confirmation.replaceChildren();
+
     preview.src = URL.createObjectURL(file);
+
     preview.style.display = "block";
 
     output.textContent = "Reading prescription using OCR...";
 
     try {
 
-        // Step 1: OCR
-        const { data: { text } } = await Tesseract.recognize(
+        const {
+            data: { text }
+        } = await Tesseract.recognize(
             file,
             "eng",
             {
@@ -402,37 +842,54 @@ imageUpload.addEventListener("change", async (event) => {
         );
 
         if (!text.trim()) {
-            throw new Error("No readable text found in the image.");
+
+            throw new Error(
+                "No readable text found in the prescription."
+            );
         }
+
+        recognizedPrescriptionText = text;
 
         output.replaceChildren();
 
-        addText(output, "h3", "Recognized Prescription Text");
+        addText(
+            output,
+            "h3",
+            "Recognized Prescription Text"
+        );
+
         addText(output, "pre", text);
 
-        addText(output, "p", "Sending prescription to n8n...");
+        addText(
+            output,
+            "p",
+            "Sending prescription to n8n..."
+        );
 
-        // Step 2: Send OCR text to n8n
-        const response = await fetch(WEBHOOK_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                prescriptionText: text
-            })
-        });
+        const response = await fetch(
+            WEBHOOK_URL,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    prescriptionText: text
+                })
+            }
+        );
 
         if (!response.ok) {
+
             throw new Error(
                 `n8n returned HTTP ${response.status}.`
             );
         }
 
-        // Step 3: Receive n8n response
         const data = await response.json();
 
-        // Step 4: Display medication and reminder preview
         displayResults(data);
 
         addText(
@@ -446,11 +903,18 @@ imageUpload.addEventListener("change", async (event) => {
 
         output.replaceChildren();
 
-        addText(output, "p", "Processing failed: " + error.message, "error");
+        addText(
+            output,
+            "p",
+            "Processing failed: " + error.message,
+            "error"
+        );
 
-        console.error("Prescription processing error:", error);
+        console.error(
+            "Prescription processing error:",
+            error
+        );
     }
-
 });
 
 </script>

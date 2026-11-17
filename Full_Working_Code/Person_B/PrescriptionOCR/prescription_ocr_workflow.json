@@ -1,0 +1,165 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "prescription-ocr",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "content-type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "208b161b-f6b9-4e86-b5d0-4bb25aee5b1f",
+      "name": "Webhook",
+      "webhookId": "a4fdb06c-0508-4d9e-a535-9c8cedc53ee8"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $json.message.content;\n\nlet parsed;\n\ntry {\n  parsed = JSON.parse(raw);\n} catch (error) {\n  throw new Error(\"Ollama returned invalid JSON: \" + raw);\n}\n\nconst medications = (parsed.medications || []).map(med => ({\n  medication_name: med.medication_name || \"Not specified\",\n  dosage: med.dosage || \"Not specified\",\n  frequency: med.frequency || \"Not specified\",\n  timing: med.timing || \"Not specified\",\n  before_or_after_food: med.before_or_after_food || \"Not specified\",\n  duration: med.duration || \"Not specified\"\n}));\n\n// Generate a reminder preview for each medication\nconst reminderPreview = medications.map(med => ({\n  medication: med.medication_name,\n  dosage: med.dosage,\n  frequency: med.frequency,\n  reminder_time: med.timing,\n  food_instruction: med.before_or_after_food,\n  duration: med.duration,\n  message: `Reminder: It is time for your ${medicationName(med)}.`\n}));\n\nfunction medicationName(med) {\n  return `${med.medication_name} (${med.dosage})`;\n}\n\nreturn [{\n  json: {\n    medications,\n    reminder_preview: reminderPreview,\n    verified: false,\n    requires_confirmation: true\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "04da0bae-a234-450c-9bde-ab6b666611c5",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "cc24fcb4-5db2-4edd-a982-d62bbcc75e0b",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:11434/api/chat",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "qwen3:4b"
+            },
+            {
+              "name": "messages",
+              "value": "={{\n[\n  {\n    role: \"system\",\n    content: \"You are a prescription data extraction engine. Return only valid JSON without explanations or markdown. Extract every medication. Never invent missing information. Use Not specified for missing fields. Return this structure: {\\\"medications\\\":[{\\\"medication_name\\\":\\\"\\\",\\\"dosage\\\":\\\"\\\",\\\"frequency\\\":\\\"\\\",\\\"timing\\\":\\\"\\\",\\\"before_or_after_food\\\":\\\"\\\",\\\"duration\\\":\\\"\\\"}]}\"\n  },\n  {\n    role: \"user\",\n    content: \"/no_think Extract medication information. Return only JSON.\\n\\nPRESCRIPTION TEXT:\\n\" + $json.body.prescriptionText\n  }\n]\n}}"
+            },
+            {
+              "name": "format",
+              "value": "json"
+            },
+            {
+              "name": "stream",
+              "value": "={{ false }}"
+            },
+            {
+              "name": "think",
+              "value": "={{ false }}"
+            },
+            {
+              "name": "options",
+              "value": "={{ \n({\n  num_predict: 512,\n  num_ctx: 4096\n})\n}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        672,
+        0
+      ],
+      "id": "b09ffe52-8c37-4b24-ae46-26522d01f848",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "5277701d-34f7-4927-aa5f-f7ce69808501",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d8ab64b47c55c46c3065c8ff776d02ce1339e66f7bd0f21bcd45b95f945cec6c"
+  },
+  "nodeGroups": [],
+  "id": "LzaH39xdUsTLwErV",
+  "tags": []
+}
