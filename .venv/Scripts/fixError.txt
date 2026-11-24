@@ -1,0 +1,30 @@
+Step 1. Open PowerShell in VS Code
+Press Ctrl + ` (backtick) to open the terminal.
+Step 2. Run this command
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
+
+If prompted, confirm with Y.
+Step 3. Activate the virtual environment
+.\.venv\Scripts\Activate.ps1
+
+
+Step 4. Verify activation
+The terminal should now look like:
+(.venv) PS C:\Users\<UserName>\work\AgenticAI>
+
+
+<badge color="success">Virtual environment activated</badge>
+Alternative: One-line solution
+They can also run both commands together:
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass; .\.venv\Scripts\Activate.ps1
+
+
+Important: -Scope Process only changes the policy for the current PowerShell session. It does not permanently change Windows security settings.
+
+After activation, continue with:
+pip install -r requirements.txt
+
+
+Then start your application using:
+python app.py
